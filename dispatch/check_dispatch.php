@@ -1,194 +1,221 @@
+
 <?php
 
-error_reporting(E_ALL);
-ini_set('display_errors',1);
+declare(strict_types=1);
 
-include_once '../config/session.php';
-include '../config/db.php';
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+
+require_once '../config/session.php';
+require_once '../config/db.php';
+
+/** @var mysqli $conn */
 
 header('Content-Type: application/json');
 
-$language=
-$_SESSION['lang'] ?? 'en';
+$language = $_SESSION['lang'] ?? 'en';
 
+$adminRole = $_SESSION['admin_role'] ?? '';
 
-if(
-($_SESSION['admin_role'] ?? '')
-==
-"admin"
-){
+if ($adminRole === 'admin') {
 
-$establishment=
-$_SESSION['selected_establishment']
-?? '';
+    $establishment =
+        $_SESSION['selected_establishment']
+        ?? '';
 
-}else{
+} else {
 
-$establishment=
-$_SESSION['establishment']
-?? '';
-
+    $establishment =
+        $_SESSION['establishment']
+        ?? '';
 }
 
-if(empty($establishment)){
+if ($establishment === '') {
 
-echo json_encode([
+    http_response_code(400);
 
-'error'=>'Establishment missing'
+    echo json_encode([
+        'error' => 'Establishment missing'
+    ]);
 
-]);
-
-exit;
-
+    exit;
 }
 
+/*
+|--------------------------------------------------------------------------
+| Keep leading zeros
+|--------------------------------------------------------------------------
+*/
 
-/* keep leading zeros */
-
-$inward_id=
-trim(
-$_GET['inward_id']
-?? ''
+$inwardId = trim(
+    (string) ($_GET['inward_id'] ?? '')
 );
 
+if ($inwardId === '') {
 
-if(empty($inward_id)){
+    http_response_code(400);
 
-echo json_encode([
+    echo json_encode([
+        'error' => 'Invalid inward ID'
+    ]);
 
-'error'=>'Invalid inward ID'
-
-]);
-
-exit;
-
+    exit;
 }
 
+/*
+|--------------------------------------------------------------------------
+| Fetch inward record
+|--------------------------------------------------------------------------
+*/
 
-/* Fetch inward */
+$query = "
+    SELECT
+        register_id,
+        letter_no,
+        quantity
+    FROM inward_letters
+    WHERE
+        TRIM(register_id) = TRIM(?)
+        AND language = ?
+        AND establishment = ?
+    LIMIT 1
+";
 
-$stmt=$conn->prepare("
+$stmt = $conn->prepare($query);
 
-SELECT
+if (!$stmt instanceof mysqli_stmt) {
 
-register_id,
-letter_no,
-quantity
+    http_response_code(500);
 
-FROM inward_letters
+    echo json_encode([
+        'error' => 'Failed to prepare inward query'
+    ]);
 
-WHERE
-TRIM(register_id)=TRIM(?)
-AND language=?
-AND establishment=?
-
-LIMIT 1
-
-");
+    exit;
+}
 
 $stmt->bind_param(
-
-"sss",
-
-$inward_id,
-$language,
-$establishment
-
+    'sss',
+    $inwardId,
+    $language,
+    $establishment
 );
 
-$stmt->execute();
+if (!$stmt->execute()) {
 
-$result=
-$stmt->get_result();
+    http_response_code(500);
 
-$row=
-$result->fetch_assoc();
+    echo json_encode([
+        'error' => 'Failed to execute inward query'
+    ]);
 
+    $stmt->close();
 
-if(!$row){
-
-echo json_encode([
-
-'error'=>'Record not found'
-
-]);
-
-exit;
-
+    exit;
 }
 
+$result = $stmt->get_result();
 
-$total=
-(int)$row['quantity'];
+$row = $result->fetch_assoc();
 
-$letter_no=
-$row['letter_no'];
+$stmt->close();
 
-$register_id=
-$row['register_id'];
+if (!$row) {
 
+    http_response_code(404);
 
-/* Dispatched */
+    echo json_encode([
+        'error' => 'Record not found'
+    ]);
 
-$stmt2=$conn->prepare("
+    exit;
+}
 
-SELECT
+$total = (int) $row['quantity'];
 
-COALESCE(
-SUM(dispatch_qty),
-0
-)
+$letterNo = (string) $row['letter_no'];
 
-AS dispatched
+$registerId = (string) $row['register_id'];
 
-FROM dispatch
+/*
+|--------------------------------------------------------------------------
+| Fetch dispatched quantity
+|--------------------------------------------------------------------------
+*/
 
-WHERE inward_id=?
+$dispatchQuery = "
+    SELECT
+        COALESCE(
+            SUM(dispatch_qty),
+            0
+        ) AS dispatched
+    FROM dispatch
+    WHERE inward_id = ?
+";
 
-");
+$stmt2 = $conn->prepare($dispatchQuery);
+
+if (!$stmt2 instanceof mysqli_stmt) {
+
+    http_response_code(500);
+
+    echo json_encode([
+        'error' => 'Failed to prepare dispatch query'
+    ]);
+
+    exit;
+}
 
 $stmt2->bind_param(
-
-"s",
-
-$register_id
-
+    's',
+    $registerId
 );
 
-$stmt2->execute();
+if (!$stmt2->execute()) {
 
-$data=
-$stmt2
-->get_result()
-->fetch_assoc();
+    http_response_code(500);
 
-$already=
-(int)$data['dispatched'];
+    echo json_encode([
+        'error' => 'Failed to execute dispatch query'
+    ]);
 
-$pending=
-$total-$already;
+    $stmt2->close();
 
-if($pending<0){
-
-$pending=0;
-
+    exit;
 }
 
+$dispatchResult = $stmt2->get_result();
 
-echo json_encode([
+$data = $dispatchResult->fetch_assoc();
 
-'inward_id'=>$register_id,
+$stmt2->close();
 
-'letter_no'=>$letter_no,
+$alreadyDispatched =
+    (int) ($data['dispatched'] ?? 0);
 
-'total'=>$total,
+$pending = $total - $alreadyDispatched;
 
-'dispatched'=>$already,
+if ($pending < 0) {
 
-'pending'=>$pending
+    $pending = 0;
+}
 
-]);
+/*
+|--------------------------------------------------------------------------
+| Final response
+|--------------------------------------------------------------------------
+*/
+
+echo json_encode(
+    [
+        'inward_id' => $registerId,
+        'letter_no' => $letterNo,
+        'total' => $total,
+        'dispatched' => $alreadyDispatched,
+        'pending' => $pending
+    ],
+    JSON_UNESCAPED_UNICODE
+);
 
 exit;
 
-?>

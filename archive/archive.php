@@ -1,53 +1,68 @@
 <?php
+declare(strict_types=1);
 
-include_once '../config/session.php';
-include_once '../config/security_headers.php';
-include_once __DIR__.'/config/auth_check.php';
-include '../header.php';
-include '../config/db.php';
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
 
-$selectedYear=$_GET['year'] ?? date('Y')-1;
+require_once '../config/session.php';
+require_once '../config/auth_check.php';
+require_once '../config/security_headers.php';
+require_once '../config/db.php';
+
+/** @var mysqli $conn */
+
+require_once '../header.php';
+require_once '../lang.php';
+
+$selectedYear =
+    (int) (
+        $_GET['year']
+        ?? (date('Y') - 1)
+    );
 
 ?>
 
-<title>Office Inward Outward Management</title>
+<title>
+Office Inward Outward Management
+</title>
+
 <div class="center-page">
 
 <div class="box">
 
 <h2>Archived Records</h2>
 
-<form method="GET" class="modern-form">
+<form
+method="GET"
+class="modern-form"
+>
 
 <div class="input-group">
 
-<label>Select Archive Year</label>
+<label>
+Select Archive Year
+</label>
 
 <select name="year">
 
 <?php
 
-$currentYear=date("Y");
+$currentYear =
+    (int) date('Y');
 
-for(
-$y=$currentYear-1;
-$y>=2020;
-$y--
-){
-
-$selected=
-($selectedYear==$y)
-?
-"selected"
-:
-"";
+for (
+    $y = $currentYear - 1;
+    $y >= 2020;
+    $y--
+) {
 
 ?>
 
 <option
 value="<?= $y ?>"
-<?= $selected ?>
-
+<?= ($selectedYear === $y)
+? 'selected'
+: '' ?>
 >
 
 <?= $y ?>
@@ -62,19 +77,21 @@ value="<?= $y ?>"
 
 <button
 class="save-btn"
-type="submit">
+type="submit"
+>
 
 Load Records
 
 </button>
 
-
 </form>
 
 <br>
 
-<a href="export_archive_inward_pdf.php?year=<?= $selectedYear ?>"
-target="_blank">
+<a
+href="export_archive_inward_pdf.php?year=<?= urlencode((string) $selectedYear) ?>"
+target="_blank"
+>
 
 <button
 type="button"
@@ -86,7 +103,8 @@ border:none;
 border-radius:5px;
 cursor:pointer;
 margin-right:10px;
-">
+"
+>
 
 Export Archived Inward PDF
 
@@ -94,9 +112,10 @@ Export Archived Inward PDF
 
 </a>
 
-
-<a href="export_archive_outward_pdf.php?year=<?= $selectedYear ?>"
-target="_blank">
+<a
+href="export_archive_outward_pdf.php?year=<?= urlencode((string) $selectedYear) ?>"
+target="_blank"
+>
 
 <button
 type="button"
@@ -107,7 +126,8 @@ color:white;
 border:none;
 border-radius:5px;
 cursor:pointer;
-">
+"
+>
 
 Export Archived Outward PDF
 
@@ -135,37 +155,104 @@ Export Archived Outward PDF
 
 <?php
 
-$res=$conn->query("
-
+$inwardQuery = "
 SELECT *
 FROM inward_archive
-WHERE YEAR(received_date)='$selectedYear'
+WHERE YEAR(received_date) = ?
 ORDER BY register_id ASC
+";
 
-");
+$stmt = $conn->prepare($inwardQuery);
 
-if($res->num_rows>0){
+if ($stmt) {
 
-while($r=$res->fetch_assoc()){
+    $stmt->bind_param(
+        'i',
+        $selectedYear
+    );
+
+    $stmt->execute();
+
+    $res =
+        $stmt->get_result();
+
+    if (
+        $res instanceof mysqli_result
+        &&
+        $res->num_rows > 0
+    ) {
+
+        while (
+            $r = $res->fetch_assoc()
+        ) {
 
 ?>
 
 <tr>
 
-<td><?= $r['register_id'] ?></td>
-<td><?= $r['letter_no'] ?></td>
-<td><?= $r['received_date'] ?></td>
-<td><?= $r['received_from'] ?></td>
-<td><?= $r['subject'] ?></td>
-<td><?= $r['department_person'] ?></td>
-<td><?= $r['remarks'] ?></td>
+<td>
+<?= htmlspecialchars(
+    (string) $r['register_id'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+</td>
+
+<td>
+<?= htmlspecialchars(
+    (string) $r['letter_no'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+</td>
+
+<td>
+<?= htmlspecialchars(
+    (string) $r['received_date'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+</td>
+
+<td>
+<?= htmlspecialchars(
+    (string) $r['received_from'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+</td>
+
+<td>
+<?= htmlspecialchars(
+    (string) $r['subject'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+</td>
+
+<td>
+<?= htmlspecialchars(
+    (string) $r['department_person'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+</td>
+
+<td>
+<?= htmlspecialchars(
+    (string) $r['remarks'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+</td>
 
 </tr>
 
 <?php
-}
 
-}else{
+        }
+
+    } else {
 
 ?>
 
@@ -179,12 +266,18 @@ No archived inward records
 
 </tr>
 
-<?php } ?>
+<?php
+
+    }
+
+    $stmt->close();
+}
+
+?>
 
 </table>
 
 <br><br>
-
 
 <h3>Archived Outward Letters</h3>
 
@@ -205,38 +298,115 @@ No archived inward records
 
 <?php
 
-$res2=$conn->query("
-
+$outwardQuery = "
 SELECT *
 FROM outward_archive
-WHERE YEAR(sent_date)='$selectedYear'
+WHERE YEAR(sent_date) = ?
 ORDER BY register_id ASC
+";
 
-");
+$stmt2 =
+    $conn->prepare($outwardQuery);
 
-if($res2->num_rows>0){
+if ($stmt2) {
 
-while($r2=$res2->fetch_assoc()){
+    $stmt2->bind_param(
+        'i',
+        $selectedYear
+    );
+
+    $stmt2->execute();
+
+    $res2 =
+        $stmt2->get_result();
+
+    if (
+        $res2 instanceof mysqli_result
+        &&
+        $res2->num_rows > 0
+    ) {
+
+        while (
+            $r2 = $res2->fetch_assoc()
+        ) {
 
 ?>
 
 <tr>
 
-<td><?= $r2['register_id'] ?></td>
-<td><?= $r2['letter_no'] ?></td>
-<td><?= $r2['sent_date'] ?></td>
-<td><?= $r2['sent_to'] ?></td>
-<td><?= $r2['subject'] ?></td>
-<td><?= $r2['department_person'] ?></td>
-<td>₹ <?= $r2['postage_amount'] ?></td>
-<td><?= $r2['remarks'] ?></td>
+<td>
+<?= htmlspecialchars(
+    (string) $r2['register_id'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+</td>
+
+<td>
+<?= htmlspecialchars(
+    (string) $r2['letter_no'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+</td>
+
+<td>
+<?= htmlspecialchars(
+    (string) $r2['sent_date'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+</td>
+
+<td>
+<?= htmlspecialchars(
+    (string) $r2['sent_to'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+</td>
+
+<td>
+<?= htmlspecialchars(
+    (string) $r2['subject'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+</td>
+
+<td>
+<?= htmlspecialchars(
+    (string) $r2['department_person'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+</td>
+
+<td>
+
+₹ <?= htmlspecialchars(
+    (string) $r2['postage_amount'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+
+</td>
+
+<td>
+<?= htmlspecialchars(
+    (string) $r2['remarks'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+</td>
 
 </tr>
 
 <?php
-}
 
-}else{
+        }
+
+    } else {
 
 ?>
 
@@ -250,7 +420,14 @@ No archived outward records
 
 </tr>
 
-<?php } ?>
+<?php
+
+    }
+
+    $stmt2->close();
+}
+
+?>
 
 </table>
 

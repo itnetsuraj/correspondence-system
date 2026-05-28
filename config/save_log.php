@@ -1,45 +1,55 @@
 <?php
-include_once __DIR__.'/session.php';
-function saveLog($activity){
 
-global $conn;
+declare(strict_types=1);
 
-/* Get session values */
+function saveLog(string $activity): void
+{
+    global $conn;
 
-$username = isset($_SESSION['user'])
-? $_SESSION['user']
-: '';
+    /** @var mysqli $conn */
 
-$role = isset($_SESSION['admin_role'])
-? $_SESSION['admin_role']
-: '';
+    $username =
+        $_SESSION['user']
+        ?? '';
 
-$establishment = isset($_SESSION['establishment'])
-? $_SESSION['establishment']
-: '';
+    $role =
+        $_SESSION['admin_role']
+        ?? '';
 
+    $establishment =
+        $_SESSION['establishment']
+        ?? '';
 
-$sql="
-INSERT INTO activity_logs
-(
-username,
-role,
-establishment,
-activity,
-log_time
-)
+    $stmt = $conn->prepare(
+        '
+        INSERT INTO activity_logs
+        (
+            username,
+            role,
+            establishment,
+            activity,
+            log_time
+        )
+        VALUES
+        (
+            ?, ?, ?, ?, NOW()
+        )
+        '
+    );
 
-VALUES
-(
-'$username',
-'$role',
-'$establishment',
-'$activity',
-NOW()
-)
-";
+    if (!$stmt) {
+        return;
+    }
 
-$conn->query($sql);
+    $stmt->bind_param(
+        'ssss',
+        $username,
+        $role,
+        $establishment,
+        $activity
+    );
 
+    $stmt->execute();
+
+    $stmt->close();
 }
-?>

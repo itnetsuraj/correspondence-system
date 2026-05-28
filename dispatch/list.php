@@ -1,86 +1,149 @@
 <?php
 
+declare(strict_types=1);
+
 error_reporting(E_ALL);
-ini_set('display_errors',1);
+ini_set('display_errors', '0');
 
-include_once '../config/session.php';
-include_once '../config/auth_check.php';
-include_once '../config/security_headers.php';
+require_once '../config/session.php';
+require_once '../config/auth_check.php';
+require_once '../config/security_headers.php';
+require_once '../config/db.php';
 
-include '../header.php';
-include '../config/db.php';
-include '../lang.php';
+/** @var mysqli $conn */
 
-$language = $_SESSION['lang'] ?? 'en';
-$role = $_SESSION['admin_role'] ?? '';
+require_once '../header.php';
+require_once '../lang.php';
 
-$condition="";
+$language =
+    $_SESSION['lang']
+    ?? 'en';
 
-if($role!="admin"){
+$role =
+    $_SESSION['admin_role']
+    ?? '';
 
-    $establishment=mysqli_real_escape_string(
-        $conn,
-        $_SESSION['establishment']
-    );
+$condition = '';
 
-    $condition="
-    AND establishment='$establishment'
-    ";
+$params = [];
 
-}else{
+$types = '';
 
-    $selectedEstablishment=
-    $_SESSION['selected_establishment']
-    ?? 'ALL';
+/*
+|--------------------------------------------------------------------------
+| Establishment Filter
+|--------------------------------------------------------------------------
+*/
 
-    if($selectedEstablishment!="ALL"){
+if ($role !== 'admin') {
 
-        $selectedEstablishment=
-        mysqli_real_escape_string(
-            $conn,
-            $selectedEstablishment
+    $establishment =
+        (string) (
+            $_SESSION['establishment']
+            ?? ''
         );
 
-        $condition="
-        AND establishment='$selectedEstablishment'
-        ";
+    $condition =
+        ' AND establishment = ? ';
 
+    $params[] =
+        $establishment;
+
+    $types .= 's';
+
+} else {
+
+    $selectedEstablishment =
+        (string) (
+            $_SESSION['selected_establishment']
+            ?? 'ALL'
+        );
+
+    if ($selectedEstablishment !== 'ALL') {
+
+        $condition =
+            ' AND establishment = ? ';
+
+        $params[] =
+            $selectedEstablishment;
+
+        $types .= 's';
     }
 }
 
-$query="
+/*
+|--------------------------------------------------------------------------
+| Main Query
+|--------------------------------------------------------------------------
+*/
 
-SELECT
-id,
-letter_no,
-dispatch_qty,
-dispatch_date,
-establishment
-
-FROM dispatch
-
-WHERE language='$language'
-$condition
-
-ORDER BY id DESC
-
+$query = "
+    SELECT
+        id,
+        letter_no,
+        dispatch_qty,
+        dispatch_date,
+        establishment
+    FROM dispatch
+    WHERE language = ?
+    $condition
+    ORDER BY id DESC
 ";
 
-$result=$conn->query($query);
+$stmt = $conn->prepare($query);
 
-if(!$result){
+if (!$stmt instanceof mysqli_stmt) {
 
-die(
-"SQL Error : ".
-$conn->error
+    die('Database query preparation failed');
+}
+
+$bindTypes =
+    's' . $types;
+
+$bindParams =
+    array_merge(
+        [$language],
+        $params
+    );
+
+$stmt->bind_param(
+    $bindTypes,
+    ...$bindParams
 );
 
+if (!$stmt->execute()) {
+
+    $stmt->close();
+
+    die('Failed to execute query');
 }
+
+$result =
+    $stmt->get_result();
 
 ?>
 
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+name="viewport"
+content="width=device-width, initial-scale=1.0"
+>
+
 <title>
-<?=($language=="mr") ? "पाठवणी यादी" : "Dispatch List"?>
+
+<?= (
+    $language === 'mr'
+)
+? 'पाठवणी यादी'
+: 'Dispatch List' ?>
+
 </title>
 
 <style>
@@ -126,15 +189,21 @@ border-radius:6px;
 
 </style>
 
+</head>
+
+<body>
+
 <div class="container">
 
 <div class="table-box">
 
 <h2>
 
-<?=($language=="mr")
-? "पाठवणी यादी"
-: "Dispatch List"?>
+<?= (
+    $language === 'mr'
+)
+? 'पाठवणी यादी'
+: 'Dispatch List' ?>
 
 </h2>
 
@@ -147,37 +216,57 @@ border-radius:6px;
 <th>ID</th>
 
 <th>
-<?=($language=="mr")
-? "पत्र क्रमांक"
-: "Letter No"?>
+
+<?= (
+    $language === 'mr'
+)
+? 'पत्र क्रमांक'
+: 'Letter No' ?>
+
 </th>
 
 <th>
-<?=($language=="mr")
-? "पाठवणी संख्या"
-: "Dispatch Qty"?>
+
+<?= (
+    $language === 'mr'
+)
+? 'पाठवणी संख्या'
+: 'Dispatch Qty' ?>
+
 </th>
 
 <th>
-<?=($language=="mr")
-? "दिनांक"
-: "Date"?>
+
+<?= (
+    $language === 'mr'
+)
+? 'दिनांक'
+: 'Date' ?>
+
 </th>
 
-<?php if($role=="admin"){ ?>
+<?php if ($role === 'admin') { ?>
 
 <th>
-<?=($language=="mr")
-? "संस्था"
-: "Establishment"?>
+
+<?= (
+    $language === 'mr'
+)
+? 'संस्था'
+: 'Establishment' ?>
+
 </th>
 
 <?php } ?>
 
 <th>
-<?=($language=="mr")
-? "स्थिती"
-: "Status"?>
+
+<?= (
+    $language === 'mr'
+)
+? 'स्थिती'
+: 'Status' ?>
+
 </th>
 
 </tr>
@@ -188,32 +277,62 @@ border-radius:6px;
 
 <?php
 
-if($result->num_rows>0){
+if (
+    $result instanceof mysqli_result
+    &&
+    $result->num_rows > 0
+) {
 
-while($row=$result->fetch_assoc()){
+    while (
+        $row = $result->fetch_assoc()
+    ) {
 
 ?>
 
 <tr>
 
-<td><?= $row['id'] ?></td>
-
 <td>
-<?= htmlspecialchars($row['letter_no']) ?>
+
+<?= (int) $row['id'] ?>
+
 </td>
 
 <td>
-<?= $row['dispatch_qty'] ?>
+
+<?= htmlspecialchars(
+    (string) $row['letter_no'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+
 </td>
 
 <td>
-<?= $row['dispatch_date'] ?>
+
+<?= (int) $row['dispatch_qty'] ?>
+
 </td>
 
-<?php if($role=="admin"){ ?>
+<td>
+
+<?= htmlspecialchars(
+    (string) $row['dispatch_date'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+
+</td>
+
+<?php if ($role === 'admin') { ?>
 
 <td>
-<?= htmlspecialchars($row['establishment']) ?>
+
+<?= htmlspecialchars(
+    (string) $row['establishment'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+
 </td>
 
 <?php } ?>
@@ -222,9 +341,11 @@ while($row=$result->fetch_assoc()){
 
 <span class="badge">
 
-<?=($language=="mr")
-? "पाठवले"
-: "Dispatched"?>
+<?= (
+    $language === 'mr'
+)
+? 'पाठवले'
+: 'Dispatched' ?>
 
 </span>
 
@@ -233,26 +354,32 @@ while($row=$result->fetch_assoc()){
 </tr>
 
 <?php
-}
 
-}else{
+    }
+
+} else {
+
 ?>
 
 <tr>
 
-<td colspan="<?=($role=="admin") ? 6 : 5?>">
+<td colspan="<?= (
+    $role === 'admin'
+)
+? '6'
+: '5' ?>">
 
-<?=($language=="mr")
-? "पाठवणी नोंदी उपलब्ध नाहीत"
-: "No Dispatch Records Found"?>
+<?= (
+    $language === 'mr'
+)
+? 'पाठवणी नोंदी उपलब्ध नाहीत'
+: 'No Dispatch Records Found' ?>
 
 </td>
 
 </tr>
 
-<?php
-}
-?>
+<?php } ?>
 
 </tbody>
 
@@ -261,3 +388,13 @@ while($row=$result->fetch_assoc()){
 </div>
 
 </div>
+
+</body>
+
+</html>
+
+<?php
+
+$stmt->close();
+
+?>

@@ -1,8 +1,20 @@
 <?php
 
-include_once '../config/session.php';
-include_once __DIR__.'/config/auth_check.php';
-include '../config/db.php';
+declare(strict_types=1);
+
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+
+require_once '../config/session.php';
+require_once '../config/auth_check.php';
+require_once '../config/security_headers.php';
+require_once '../config/db.php';
+
+/** @var mysqli $conn */
+
+include '../header.php';
+include '../lang.php';
+
 
 $language=$_SESSION['lang'] ?? 'en';
 $role=$_SESSION['admin_role'] ?? '';

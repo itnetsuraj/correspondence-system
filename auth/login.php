@@ -1,12 +1,18 @@
 <?php
 
-error_reporting(E_ALL);
-ini_set('display_errors',1);
+declare(strict_types=1);
 
-include_once '../config/session.php';
-include_once '../config/security_headers.php';
-include '../config/db.php';
-include '../config/save_log.php';
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+
+require_once '../config/session.php';
+require_once '../config/security_headers.php';
+require_once '../config/db.php';
+
+/** @var mysqli $conn */
+
+require_once '../lang.php';
+require_once '../config/save_log.php';
 
 
 /* Generate CSRF token */

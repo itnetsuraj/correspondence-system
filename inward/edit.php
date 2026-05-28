@@ -1,15 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 error_reporting(E_ALL);
-ini_set('display_errors',1);
+ini_set('display_errors', '0');
 
-include_once '../config/session.php';
-include_once '../config/security_headers.php';
-include_once '../config/auth_check.php';
+require_once '../config/session.php';
+require_once '../config/auth_check.php';
+require_once '../config/security_headers.php';
+require_once '../config/db.php';
 
-include '../config/db.php';
+/** @var mysqli $conn */
+
 include '../header.php';
 include '../lang.php';
+
 
 /* Admin only */
 

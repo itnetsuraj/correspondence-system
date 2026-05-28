@@ -1,57 +1,86 @@
 <?php
 
+declare(strict_types=1);
+
 error_reporting(E_ALL);
-ini_set('display_errors',1);
+ini_set('display_errors', '0');
 
-include_once __DIR__.'/config/security_headers.php';
-include_once __DIR__.'/config/session.php';
-include_once __DIR__.'/config/db.php';
-include_once __DIR__.'/config/auto_archive.php';
-include_once __DIR__.'/lang.php';
+require_once __DIR__ . '/config/security_headers.php';
+require_once __DIR__ . '/config/session.php';
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/config/auto_archive.php';
+require_once __DIR__ . '/lang.php';
 
-if(!isset($_SESSION['user'])){
+/** @var mysqli $conn */
 
-header("Location:/correspondence-system/auth/login.php");
-exit;
-
+if (!isset($lang[$currentLanguage])) {
+    $currentLanguage = 'en';
 }
 
-if(empty($_SESSION['csrf_token'])){
+if (!isset($_SESSION['user'])) {
 
-$_SESSION['csrf_token']=bin2hex(random_bytes(32));
+    header(
+        'Location: /correspondence-system/auth/login.php'
+    );
 
+    exit;
 }
 
-if(!isset($_SESSION['selected_establishment'])){
+if (empty($_SESSION['csrf_token'])) {
 
-$_SESSION['selected_establishment']="ALL";
-
+    $_SESSION['csrf_token'] =
+        bin2hex(random_bytes(32));
 }
 
-if(isset($_POST['selected_establishment'])){
+if (
+    !isset($_SESSION['selected_establishment'])
+) {
 
-if(
-!isset($_POST['csrf_token'])
-||
-!hash_equals(
-$_SESSION['csrf_token'],
-$_POST['csrf_token']
-)
-){
-die("Invalid Request");
+    $_SESSION['selected_establishment'] = 'ALL';
 }
 
-$_SESSION['selected_establishment']=trim($_POST['selected_establishment']);
+if (
+    isset($_POST['selected_establishment'])
+) {
 
-header("Location:".$_SERVER['PHP_SELF']);
-exit;
+    if (
+        !isset($_POST['csrf_token'])
+        ||
+        !hash_equals(
+            $_SESSION['csrf_token'],
+            (string) $_POST['csrf_token']
+        )
+    ) {
 
+        die('Invalid Request');
+    }
+
+    $_SESSION['selected_establishment'] =
+        trim(
+            (string) $_POST['selected_establishment']
+        );
+
+    header(
+        'Location: ' . $_SERVER['PHP_SELF']
+    );
+
+    exit;
 }
+
+$adminRole =
+    $_SESSION['admin_role']
+    ?? '';
+
+$currentLanguage =
+    $_SESSION['lang']
+    ?? 'en';
 
 ?>
 
-<link rel="stylesheet"
-href="/correspondence-system/style.css">
+<link
+rel="stylesheet"
+href="/correspondence-system/style.css"
+>
 
 <style>
 
@@ -186,23 +215,16 @@ cursor:pointer;
 }
 
 .dropdown-content{
-
 display:none;
 position:absolute;
 top:50px;
 left:0;
-
 background:white;
 min-width:260px;
-
 border-radius:10px;
-
 padding:8px;
-
 box-shadow:0 4px 12px rgba(0,0,0,.2);
-
 z-index:9999;
-
 }
 
 .dropdown-content.show{
@@ -210,149 +232,87 @@ display:block;
 }
 
 .dropdown-content a{
-
 display:block;
 padding:14px;
-
 text-decoration:none;
-
 background:white;
 color:#2c3e50;
-
 font-weight:bold;
-
 border-radius:8px;
-
 margin-bottom:6px;
-
 border:1px solid #e5e5e5;
-
 }
-/* Dispatch menu */
 
 .dispatch-dropdown{
-background:#ffffff;   /* white */
+background:#ffffff;
 position:relative;
 display:inline-block;
-
 }
 
 .dispatch-btn{
-
 background:#2c3e50;
 color:white;
-
 border:none;
-
 padding:10px 15px;
-
 border-radius:8px;
-
 cursor:pointer;
-
 font-size:14px;
-
 }
 
 .dispatch-btn:hover{
-
 background:#34495e;
-
 }
 
 .dispatch-menu{
-
 display:none;
-
 position:absolute;
-
 top:45px;
 left:0;
-
 background:white;
-
 min-width:220px;
-
 border-radius:10px;
-
 overflow:hidden;
-
 box-shadow:0 5px 15px rgba(0,0,0,.2);
-
 z-index:9999;
-
-
 }
 
 .dispatch-menu a{
-
 display:block;
-
 padding:12px;
-
 text-decoration:none;
-
 font-weight:bold;
-
 border-bottom:1px solid #eee;
-
-background:white;     /* white */
-
-color:#2c3e50;        /* dark text */
-
+background:white;
+color:#2c3e50;
 }
 
 .dispatch-menu a:hover{
-
 background:#f2f2f2;
-
-}
-
-.dispatch-menu{
-
-display:none;
-
-position:absolute;
-
-top:45px;
-left:0;
-
-background:white;
-
-min-width:220px;
-
-border-radius:10px;
-
-overflow:hidden;
-
-box-shadow:0 5px 15px rgba(0,0,0,.2);
-
-z-index:9999;
-
 }
 
 .dispatch-menu.show{
-
 display:block;
-
 }
 
-}
 </style>
 
 <div class="top-header">
 
 <div class="language-box">
 
-<a href="/correspondence-system/language.php?lang=en">English</a>
+<a href="/correspondence-system/language.php?lang=en">
+English
+</a>
 
-<a href="/correspondence-system/language.php?lang=mr">मराठी</a>
+<a href="/correspondence-system/language.php?lang=mr">
+मराठी
+</a>
 
 </div>
 
 <div class="right-section">
 
-<?php if($_SESSION['admin_role']=="admin"){ ?>
+<?php if ($adminRole === 'admin') { ?>
 
 <div class="establishment-box">
 
@@ -361,36 +321,70 @@ display:block;
 <input
 type="hidden"
 name="csrf_token"
-value="<?= $_SESSION['csrf_token']?>">
+value="<?= htmlspecialchars(
+    $_SESSION['csrf_token'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>"
+>
 
 <select
 name="selected_establishment"
-onchange="this.form.submit()">
+onchange="this.form.submit()"
+>
 
-<option value="ALL">All Establishments</option>
+<option value="ALL">
+All Establishments
+</option>
 
 <?php
 
-$res=$conn->query("
-SELECT *
+$query = "
+SELECT establishment_name
 FROM establishments
 ORDER BY establishment_name ASC
-");
+";
 
-while($r=$res->fetch_assoc()){
+$result = $conn->query($query);
+
+if ($result instanceof mysqli_result) {
+
+    while ($row = $result->fetch_assoc()) {
+
+        $establishmentName =
+            (string) $row['establishment_name'];
 
 ?>
 
 <option
-value="<?=htmlspecialchars($r['establishment_name'])?>"
-<?=($_SESSION['selected_establishment']==$r['establishment_name'])?'selected':''?>
+value="<?= htmlspecialchars(
+    $establishmentName,
+    ENT_QUOTES,
+    'UTF-8'
+) ?>"
+<?= (
+    ($_SESSION['selected_establishment'] ?? '')
+    === $establishmentName
+)
+? 'selected'
+: ''
+?>
 >
 
-<?=htmlspecialchars($r['establishment_name'])?>
+<?= htmlspecialchars(
+    $establishmentName,
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
 
 </option>
 
-<?php } ?>
+<?php
+
+    }
+}
+
+?>
 
 </select>
 
@@ -406,28 +400,59 @@ value="<?=htmlspecialchars($r['establishment_name'])?>"
 
 <div class="user-name">
 
-<?= htmlspecialchars($_SESSION['user']) ?>
+<?= htmlspecialchars(
+    (string) $_SESSION['user'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
 
 </div>
 
 <div class="user-role">
 
 Role :
-<?= htmlspecialchars($_SESSION['admin_role']) ?>
+<?= htmlspecialchars(
+    $adminRole,
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
 
 <br>
 
 Establishment :
 
-<?= ($_SESSION['admin_role']=="admin")
-? htmlspecialchars($_SESSION['selected_establishment'])
-: htmlspecialchars($_SESSION['establishment']) ?>
+<?php
+
+echo htmlspecialchars(
+    (
+        $adminRole === 'admin'
+        ? (
+            $_SESSION['selected_establishment']
+            ?? 'ALL'
+        )
+        : (
+            $_SESSION['establishment']
+            ?? ''
+        )
+    ),
+    ENT_QUOTES,
+    'UTF-8'
+);
+
+?>
 
 <br>
 
 Last Login :
 
-<?= htmlspecialchars($_SESSION['last_login'] ?? 'N/A') ?>
+<?= htmlspecialchars(
+    (string) (
+        $_SESSION['last_login']
+        ?? 'N/A'
+    ),
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
 
 </div>
 
@@ -435,16 +460,23 @@ Last Login :
 
 <form
 method="post"
-action="/correspondence-system/auth/logout.php">
+action="/correspondence-system/auth/logout.php"
+>
 
 <input
 type="hidden"
 name="csrf_token"
-value="<?= $_SESSION['csrf_token']?>">
+value="<?= htmlspecialchars(
+    $_SESSION['csrf_token'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>"
+>
 
 <button
 type="submit"
-class="logout-btn">
+class="logout-btn"
+>
 
 Logout
 
@@ -466,7 +498,8 @@ Logout
 
 <button
 class="menu-btn"
-id="menuButton">
+id="menuButton"
+>
 
 ☰
 
@@ -474,7 +507,8 @@ id="menuButton">
 
 <div
 class="dropdown-content"
-id="menuContent">
+id="menuContent"
+>
 
 <a href="/correspondence-system/auth/change_password.php">
 🔑 Change Password
@@ -488,22 +522,18 @@ id="menuContent">
 📦 Archive Records
 </a>
 
-<?php if($_SESSION['admin_role']=="admin"){ ?>
+<?php if ($adminRole === 'admin') { ?>
 
 <a href="/correspondence-system/admin/activity_log.php">
 📋 Activity Log
 </a>
 
 <a href="/correspondence-system/admin/change_inward_id.php">
-
- ✏️ Change Inward ID
-
+✏️ Change Inward ID
 </a>
 
 <a href="/correspondence-system/admin/change_outward_id.php">
-
- ✏️ Change Outward ID
-
+✏️ Change Outward ID
 </a>
 
 <a href="/correspondence-system/admin/import_data.php">
@@ -524,68 +554,104 @@ id="menuContent">
 
 </div>
 
-
 <a href="/correspondence-system/dashboard.php">
-<?= $lang[$current]['dashboard'] ?>
+
+<?= htmlspecialchars(
+    (string) $lang[$current]['dashboard'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+
 </a>
 
-
 <?php
-if(
-$_SESSION['admin_role']!="admin"
-||
-$_SESSION['selected_establishment']!="ALL"
-){
+
+if (
+    $adminRole !== 'admin'
+    ||
+    (
+        $_SESSION['selected_establishment']
+        ?? 'ALL'
+    ) !== 'ALL'
+) {
+
 ?>
 
 <a href="/correspondence-system/inward/add.php">
-<?= $lang[$current]['inward_title'] ?>
+
+<?= htmlspecialchars(
+    (string) $lang[$current]['inward_title'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+
 </a>
 
 <a href="/correspondence-system/outward/add.php">
-<?= $lang[$current]['outward_title'] ?>
+
+<?= htmlspecialchars(
+    (string) $lang[$current]['outward_title'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+
 </a>
 
 <?php } ?>
 
-
 <a href="/correspondence-system/inward/list.php">
-<?= $lang[$current]['inward'] ?>
-</a>
 
+<?= htmlspecialchars(
+    (string) $lang[$current]['inward'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+
+</a>
 
 <a href="/correspondence-system/outward/list.php">
-<?= $lang[$current]['outward'] ?>
-</a>
 
+<?= htmlspecialchars(
+    (string) $lang[$current]['outward'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+
+</a>
 
 <div class="dispatch-dropdown">
 
 <button class="dispatch-btn">
 
-<?= ($_SESSION['lang']=="mr")
-? " पाठवणी ▼"
-: " Dispatch ▼"
+<?= (
+    $currentLanguage === 'mr'
+)
+? ' पाठवणी ▼'
+: ' Dispatch ▼'
 ?>
 
 </button>
 
 <div class="dispatch-menu">
 
-<a href="/correspondence-system/dispatch/add.php?lang=<?= $_SESSION['lang'] ?>">
+<a href="/correspondence-system/dispatch/add.php?lang=<?= urlencode($currentLanguage) ?>">
 
-<?= ($_SESSION['lang']=="mr")
-? "➕ पाठवणी जोडा"
-: "➕ Add Dispatch"
+<?= (
+    $currentLanguage === 'mr'
+)
+? '➕ पाठवणी जोडा'
+: '➕ Add Dispatch'
 ?>
 
 </a>
 
-<a href="/correspondence-system/dispatch/list.php?lang=<?= $_SESSION['lang'] ?>">
+<a href="/correspondence-system/dispatch/list.php?lang=<?= urlencode($currentLanguage) ?>">
 
-<?= ($_SESSION['lang']=="mr")
-? "📋 पाठवणी यादी"
-: "📋 Dispatch List"
+<?= (
+    $currentLanguage === 'mr'
+)
+? '📋 पाठवणी यादी'
+: '📋 Dispatch List'
 ?>
 
 </a>
@@ -595,108 +661,124 @@ $_SESSION['selected_establishment']!="ALL"
 </div>
 
 <a href="/correspondence-system/outward/balance.php">
-<?= $lang[$current]['outward_balance'] ?>
+
+<?= htmlspecialchars(
+    (string) $lang[$current]['outward_balance'],
+    ENT_QUOTES,
+    'UTF-8'
+) ?>
+
 </a>
+
 </div>
+
 </div>
 
 <script>
 
-const menuButton=document.getElementById("menuButton");
-const menuContent=document.getElementById("menuContent");
-
-menuButton.addEventListener(
-"click",
-function(e){
-
-e.stopPropagation();
-
-menuContent.classList.toggle(
-"show"
+const menuButton =
+document.getElementById(
+    "menuButton"
 );
 
+const menuContent =
+document.getElementById(
+    "menuContent"
+);
+
+if (menuButton && menuContent) {
+
+    menuButton.addEventListener(
+        "click",
+        function (e) {
+
+            e.stopPropagation();
+
+            menuContent.classList.toggle(
+                "show"
+            );
+        }
+    );
+
+    document.addEventListener(
+        "click",
+        function () {
+
+            menuContent.classList.remove(
+                "show"
+            );
+        }
+    );
 }
-);
 
-document.addEventListener(
-"click",
-function(){
-
-menuContent.classList.remove(
-"show"
-);
-
-}
-);
-
-
-/* inactivity logout */
-
-let inactiveTime=10*60*1000;
+let inactiveTime = 10 * 60 * 1000;
 
 let logoutTimer;
 
-function resetTimer(){
+function resetTimer() {
 
-clearTimeout(logoutTimer);
+    clearTimeout(logoutTimer);
 
-logoutTimer=setTimeout(function(){
+    logoutTimer = setTimeout(
+        function () {
 
-alert(
-"Session expired due to inactivity"
-);
+            alert(
+                "Session expired due to inactivity"
+            );
 
-/* redirect directly */
+            window.location.href =
+                "/correspondence-system/auth/login.php?expired=1";
 
-window.location.href=
-"/correspondence-system/auth/login.php?expired=1";
-
-},inactiveTime);
-
+        },
+        inactiveTime
+    );
 }
 
 [
-"mousemove",
-"click",
-"keydown",
-"scroll",
-"touchstart"
+    "mousemove",
+    "click",
+    "keydown",
+    "scroll",
+    "touchstart"
 ].forEach(function(event){
 
-document.addEventListener(
-event,
-resetTimer
-);
-
+    document.addEventListener(
+        event,
+        resetTimer
+    );
 });
 
 resetTimer();
 
-const dispatchBtn=document.querySelector(".dispatch-btn");
+const dispatchBtn =
+document.querySelector(".dispatch-btn");
 
-const dispatchMenu=document.querySelector(".dispatch-menu");
+const dispatchMenu =
+document.querySelector(".dispatch-menu");
 
-dispatchBtn.addEventListener(
-"click",
-function(e){
+if (dispatchBtn && dispatchMenu) {
 
-e.stopPropagation();
+    dispatchBtn.addEventListener(
+        "click",
+        function (e) {
 
-dispatchMenu.classList.toggle(
-"show"
-);
+            e.stopPropagation();
 
+            dispatchMenu.classList.toggle(
+                "show"
+            );
+        }
+    );
+
+    document.addEventListener(
+        "click",
+        function () {
+
+            dispatchMenu.classList.remove(
+                "show"
+            );
+        }
+    );
 }
-);
 
-document.addEventListener(
-"click",
-function(){
-
-dispatchMenu.classList.remove(
-"show"
-);
-
-}
-);
 </script>
