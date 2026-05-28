@@ -1,0 +1,68 @@
+<?php
+
+include_once '../config/session.php';
+include_once '../config/security_headers.php';
+include_once __DIR__.'/config/auth_check.php';
+
+include '../config/db.php';
+require '../fpdf/fpdf.php';
+
+$from=$_GET['from'];
+$to=$_GET['to'];
+
+$pdf=new FPDF('L','mm','A4');
+
+$pdf->AddPage();
+
+$pdf->SetFont('Arial','B',16);
+
+$pdf->Cell(
+0,
+12,
+'Archived Inward Report',
+1,
+1,
+'C'
+);
+
+$pdf->Ln(3);
+
+$pdf->SetFont('Arial','B',8);
+
+$pdf->Cell(15,10,'ID',1);
+$pdf->Cell(20,10,'Letter No',1);
+$pdf->Cell(30,10,'Date',1);
+$pdf->Cell(50,10,'Received From',1);
+$pdf->Cell(60,10,'Subject',1);
+$pdf->Cell(40,10,'Department',1);
+$pdf->Cell(50,10,'Remarks',1);
+
+$pdf->Ln();
+
+$pdf->SetFont('Arial','',8);
+
+$res=$conn->query("
+SELECT *
+FROM inward_archive
+WHERE received_date
+BETWEEN '$from'
+AND '$to'
+");
+
+while($r=$res->fetch_assoc()){
+
+$pdf->Cell(15,10,$r['register_id'],1);
+$pdf->Cell(20,10,$r['letter_no'],1);
+$pdf->Cell(30,10,$r['received_date'],1);
+$pdf->Cell(50,10,$r['received_from'],1);
+$pdf->Cell(60,10,$r['subject'],1);
+$pdf->Cell(40,10,$r['department_person'],1);
+$pdf->Cell(50,10,$r['remarks'],1);
+
+$pdf->Ln();
+
+}
+
+$pdf->Output();
+
+?>

@@ -1,0 +1,23 @@
+project/
+│
+├── config/
+│   └── db.php
+│
+├── auth/
+│   ├── login.php
+│   └── logout.php
+│
+├── inward/
+│   ├── add.php
+│   ├── list.php
+│   ├── edit.php
+│
+├── outward/
+│   ├── add.php
+│   ├── list.php
+│   ├── edit.php
+│
+├── uploads/
+│
+├── dashboard.php
+└── index.php

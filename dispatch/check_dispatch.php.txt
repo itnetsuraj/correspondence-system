@@ -1,0 +1,93 @@
+<?php
+
+include '../config/db.php';
+
+$letter_no=$_GET['letter_no'] ?? '';
+
+if(empty($letter_no)){
+
+echo json_encode([
+'total'=>0,
+'dispatched'=>0,
+'pending'=>0
+]);
+
+exit;
+
+}
+
+/* get inward quantity */
+
+$stmt=$conn->prepare("
+
+SELECT quantity
+
+FROM inward_letters
+
+WHERE letter_no=?
+
+LIMIT 1
+
+");
+
+$stmt->bind_param(
+"s",
+$letter_no
+);
+
+$stmt->execute();
+
+$inward=$stmt->get_result()->fetch_assoc();
+
+$total=(int)($inward['quantity'] ?? 0);
+
+
+/* already dispatched */
+
+$stmt2=$conn->prepare("
+
+SELECT
+COALESCE(
+SUM(dispatch_qty),
+0
+)
+
+AS total_dispatched
+
+FROM dispatch
+
+WHERE letter_no=?
+
+");
+
+$stmt2->bind_param(
+"s",
+$letter_no
+);
+
+$stmt2->execute();
+
+$dispatchData=
+$stmt2->get_result()->fetch_assoc();
+
+$already=
+(int)$dispatchData['total_dispatched'];
+
+$pending=
+$total-$already;
+
+if($pending<0){
+
+$pending=0;
+
+}
+
+echo json_encode([
+
+'total'=>$total,
+'dispatched'=>$already,
+'pending'=>$pending
+
+]);
+
+?>

@@ -1,0 +1,11 @@
+/opt/lampp/etc/php.ini
+
+expose_php=On
+
+expose_php=Off
+
+sudo /opt/lampp/lampp restart
+
+curl -I http://localhost/correspondence-system
+
+X-Powered-By: PHP/8.x
