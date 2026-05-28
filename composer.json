@@ -1,5 +1,25 @@
+
 {
+    "name": "itnetsuraj/correspondence-system",
+    "description": "Secure correspondence management system built with PHP",
+    "type": "project",
+    "license": "proprietary",
+
     "require": {
+        "php": "^8.1",
         "phpoffice/phpspreadsheet": "^5.7"
+    },
+
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^10.5",
+        "squizlabs/php_codesniffer": "^4.0",
+        "vimeo/psalm": "^5.26"
+    },
+
+    "config": {
+        "sort-packages": true
     }
 }
+
