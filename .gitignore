@@ -1,0 +1,34 @@
+# Ignore sensitive files and directories
+.env
+.env.local
+.env.*.local
+config/db.php
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Composer and vendor
+vendor/
+composer.lock
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.log
+
+# Session files (if stored locally)
+sessions/
+*.sess
+
+# Operating system files
+Thumbs.db
+.AppleDouble
+.LSOverride
