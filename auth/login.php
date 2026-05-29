@@ -39,12 +39,15 @@ $_SESSION['captcha']=rand(1000,9999);
 if(isset($_POST['login'])){
 
 
-/* CSRF validation */
+/* CSRF validation - SECURITY FIX: Use hash_equals() for timing-safe comparison */
 
 if(
 !isset($_POST['csrf_token'])
 ||
-$_POST['csrf_token']!=$_SESSION['csrf_token']
+!hash_equals(
+    (string)$_SESSION['csrf_token'],
+    (string)$_POST['csrf_token']
+)
 ){
 
 die("Invalid Request (CSRF Failed)");
